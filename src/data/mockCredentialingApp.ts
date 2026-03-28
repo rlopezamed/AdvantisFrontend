@@ -35,7 +35,7 @@ export interface CredentialingApp {
     progressPercentage: number;
     daysLeft: number;
   };
-  specialist: Specialist;
+  specialist: Specialist | null;
   taskGroups: TaskGroup[];
 }
 

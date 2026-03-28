@@ -21,8 +21,18 @@ const ConfettiParticle = ({ delay, xOffset }: { delay: number; xOffset: number }
   );
 };
 
-export function WelcomeStep({ onNext }: { onNext: () => void }) {
+interface WelcomeProps {
+  onNext: () => void;
+  clinicianName?: string;
+  facilityName?: string;
+  specialistName?: string;
+  specialistTitle?: string;
+}
+
+export function WelcomeStep({ onNext, clinicianName, facilityName, specialistName, specialistTitle }: WelcomeProps) {
   const [showConfetti, setShowConfetti] = useState(false);
+  const firstName = (clinicianName || '').split(/\s+/)[0] || 'there';
+  const specFirst = (specialistName || '').split(/\s+/)[0] || 'Your Specialist';
 
   useEffect(() => {
     const timer = setTimeout(() => setShowConfetti(true), 300);
@@ -55,10 +65,10 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
           <div className="text-left bg-slate-50 dark:bg-slate-800/30 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700/50 shadow-inner relative overflow-hidden">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-            <p className="text-lg text-slate-800 dark:text-slate-200 leading-relaxed mb-4 font-medium">Dear Sarah,</p>
-            
+            <p className="text-lg text-slate-800 dark:text-slate-200 leading-relaxed mb-4 font-medium">Dear {firstName},</p>
+
             <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              I'm <strong className="text-indigo-600 dark:text-indigo-300 font-semibold">Jessica</strong>, your dedicated Credentialing Specialist. We are absolutely thrilled to have you join the team for your upcoming assignment at <strong>Mercy General!</strong>
+              I'm <strong className="text-indigo-600 dark:text-indigo-300 font-semibold">{specFirst}</strong>, your dedicated Credentialing Specialist. We are absolutely thrilled to have you join the team for your upcoming assignment at <strong>{facilityName || 'your facility'}!</strong>
             </p>
             
             <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
@@ -71,13 +81,13 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
             
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700/50">
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Warmly,</p>
-              <div 
+              <div
                 className="text-4xl text-indigo-500 dark:text-indigo-400 opacity-90 -rotate-3 inline-block font-serif tracking-tight ml-2 mt-2"
                 style={{ fontFamily: "'Brush Script MT', 'Caveat', 'Lucida Handwriting', cursive", textShadow: "0 2px 15px rgba(99,102,241,0.3)" }}
               >
-                Jessica Reynolds
+                {specialistName || 'Your Credentialing Team'}
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 font-bold tracking-widest uppercase">Lead Credentialing Specialist</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 font-bold tracking-widest uppercase">{specialistTitle || 'Credentialing Specialist'}</p>
             </div>
           </div>
         </div>
