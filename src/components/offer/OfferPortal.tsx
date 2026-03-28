@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { PDFDocument } from 'pdf-lib';
 
 type ScreenState = 'lookup' | 'review' | 'accepted' | 'rejected';
+const OFFER_PDF_URL = '/api/demo-offer-pdf';
 
 export function OfferPortal() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export function OfferPortal() {
     
     try {
       // 1. Fetch original PDF
-      const existingPdfBytes = await fetch('/tac-sample.pdf').then(res => res.arrayBuffer());
+      const existingPdfBytes = await fetch(OFFER_PDF_URL).then(res => res.arrayBuffer());
       const pdfDoc = await PDFDocument.load(existingPdfBytes);
       
       // 2. Embed signature PNG
@@ -157,7 +158,7 @@ export function OfferPortal() {
               </div>
               
               <div className="flex-1 w-full relative rounded-xl overflow-hidden shadow-sm border border-slate-300 bg-slate-200">
-                 <MobilePdfViewer fileUrl="/tac-sample.pdf" />
+                 <MobilePdfViewer fileUrl={OFFER_PDF_URL} />
               </div>
             </div>
 
