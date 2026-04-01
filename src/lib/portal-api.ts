@@ -26,8 +26,12 @@ export class PortalApiError extends Error {
   }
 }
 
-export async function getMyOfferSigningSession(): Promise<OfferSigningSession> {
-  const response = await fetch(`${API_BASE}/signing/me/session`, {
+export async function getMyOfferSigningSession(signrequestUuid?: string | null): Promise<OfferSigningSession> {
+  const endpoint = signrequestUuid
+    ? `${API_BASE}/signing/me/session?signrequest_uuid=${encodeURIComponent(signrequestUuid)}`
+    : `${API_BASE}/signing/me/session`;
+
+  const response = await fetch(endpoint, {
     credentials: 'include',
     cache: 'no-store',
   });

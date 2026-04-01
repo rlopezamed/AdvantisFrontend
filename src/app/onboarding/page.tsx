@@ -7,7 +7,7 @@ import { WelcomeStep } from '@/components/onboarding/WelcomeStep';
 import { HROnboardingStep } from '@/components/onboarding/HROnboardingStep';
 import { OnboardingDashboard } from '@/components/onboarding/OnboardingDashboard';
 import { ArrowRight, Loader2, MailCheck, Phone, ShieldCheck } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -37,9 +37,18 @@ function formatUsPhoneNumber(value: string): string {
 }
 
 // ── Auth Gate Component ──────────────────────────────────────
-function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
+function AuthGate({
+  onAuthenticated,
+  returnTo,
+  incomingChallengeId,
+  incomingMagicToken,
+}: {
+  onAuthenticated: () => void;
+  returnTo: string | null;
+  incomingChallengeId: string | null;
+  incomingMagicToken: string | null;
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [phase, setPhase] = useState<'identifier' | 'otp' | 'magic-link' | 'risk'>('identifier');
   const [identifier, setIdentifier] = useState('');
   const [challengeId, setChallengeId] = useState('');
@@ -57,7 +66,6 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   const canSubmit = isPhone || isEmail;
   const normalizedIdentifier = isPhone ? normalizedPhone : identifier.trim();
   const verificationDestination = isPhone ? formatUsPhoneNumber(identifier) : identifier.trim();
-
   const handleMagicLinkVerify = useCallback(async (incomingChallengeId: string, magicToken: string) => {
     setLoading(true);
     setError('');
@@ -74,7 +82,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
         setError(data.detail || 'This sign-in link is invalid or has expired.');
         return;
       }
-      router.replace('/onboarding');
+      if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
+      else router.replace('/onboarding');
       if (data.next === 'authenticated') {
         onAuthenticated();
       } else if (data.next === 'risk_challenge') {
@@ -89,14 +98,12 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, [onAuthenticated, router]);
+  }, [onAuthenticated, returnTo, router]);
 
   useEffect(() => {
-    const challengeIdFromUrl = searchParams.get('challenge_id');
-    const magicTokenFromUrl = searchParams.get('magic_token');
-    if (!challengeIdFromUrl || !magicTokenFromUrl) return;
-    void handleMagicLinkVerify(challengeIdFromUrl, magicTokenFromUrl);
-  }, [handleMagicLinkVerify, searchParams]);
+    if (!incomingChallengeId || !incomingMagicToken) return;
+    void handleMagicLinkVerify(incomingChallengeId, incomingMagicToken);
+  }, [handleMagicLinkVerify, incomingChallengeId, incomingMagicToken]);
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
@@ -109,7 +116,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       const res = await fetch(`${API_BASE}/auth/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: normalizedIdentifier }),
+        body: JSON.stringify({ identifier: normalizedIdentifier, return_to: returnTo }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Failed to send verification code'); return; }
@@ -142,6 +149,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Invalid code'); setOtp(['', '', '', '', '', '']); inputRefs.current[0]?.focus(); return; }
       if (data.next === 'authenticated') {
+        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
         onAuthenticated();
       } else if (data.next === 'risk_challenge') {
         // Second OTP required via /auth/challenge/verify
@@ -172,7 +180,10 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Invalid code'); setOtp(['', '', '', '', '', '']); inputRefs.current[0]?.focus(); return; }
-      if (data.next === 'authenticated') onAuthenticated();
+      if (data.next === 'authenticated') {
+        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
+        onAuthenticated();
+      }
     } catch {
       setError('Verification failed');
     } finally {
@@ -328,7 +339,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                   setError('');
                   setDevCode(null);
                   setDevMagicToken(null);
-                  router.replace('/onboarding');
+                  if (returnTo && returnTo.startsWith('/')) router.replace(`/onboarding?return_to=${encodeURIComponent(returnTo)}`);
+                  else router.replace('/onboarding');
                 }}
                 className="w-full text-center text-sm text-slate-500 hover:text-[#3378bc] dark:hover:text-[#72c9ef] transition-colors font-medium py-2"
               >
@@ -344,6 +356,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
 // ── Main Page ────────────────────────────────────────────────
 export default function OnboardingPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<StepState>('auth');
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [profile, setProfile] = useState<{ name: string; role: string; facility: string } | null>(null);
@@ -351,8 +364,31 @@ export default function OnboardingPage() {
     clinicianName: string; facility: string;
     specialistName: string; specialistTitle: string;
   } | null>(null);
+  const [queryContext] = useState(() => {
+    if (typeof window === 'undefined') {
+      return {
+        returnTo: null as string | null,
+        challengeId: null as string | null,
+        magicToken: null as string | null,
+      };
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const returnToValue = params.get('return_to');
+    return {
+      returnTo: returnToValue && returnToValue.startsWith('/') ? returnToValue : null,
+      challengeId: params.get('challenge_id'),
+      magicToken: params.get('magic_token'),
+    };
+  });
+  const returnTo = queryContext.returnTo;
 
   const loadProfileAndStep = useCallback(() => {
+    if (returnTo && returnTo.startsWith('/')) {
+      router.replace(returnTo);
+      setCheckingAuth(false);
+      return;
+    }
     // Fetch clinician profile
     fetch(`${API_BASE}/applications/me`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
@@ -389,7 +425,7 @@ export default function OnboardingPage() {
         setCurrentStep('welcome');
       })
       .finally(() => setCheckingAuth(false));
-  }, []);
+  }, [returnTo, router]);
 
   // Check if already authenticated on mount
   useEffect(() => {
@@ -458,7 +494,12 @@ export default function OnboardingPage() {
           <AnimatePresence mode="wait">
             {currentStep === 'auth' && (
               <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4 }} className="flex-1">
-                <AuthGate onAuthenticated={handleAuthenticated} />
+                <AuthGate
+                  onAuthenticated={handleAuthenticated}
+                  returnTo={queryContext.returnTo}
+                  incomingChallengeId={queryContext.challengeId}
+                  incomingMagicToken={queryContext.magicToken}
+                />
               </motion.div>
             )}
 

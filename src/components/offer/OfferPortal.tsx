@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -13,7 +13,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { AdvantisLogo } from '@/components/brand/AdvantisLogo';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getMyOfferSigningSession, PortalApiError, type OfferSigningSession } from '@/lib/portal-api';
 
 type ScreenState =
@@ -35,15 +35,19 @@ function formatDocumentLabel(value: string): string {
 
 export function OfferPortal() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [screen, setScreen] = useState<ScreenState>({ kind: 'loading' });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const signrequestUuid = searchParams.get('signrequest_uuid');
+  const returnTo = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
-  async function loadSession(showSpinner = false) {
+  const loadSession = useCallback(async (showSpinner = false) => {
     if (showSpinner) setIsRefreshing(true);
     else setScreen({ kind: 'loading' });
 
     try {
-      const session = await getMyOfferSigningSession();
+      const session = await getMyOfferSigningSession(signrequestUuid);
 
       if (session.status === 'signed') {
         setScreen({ kind: 'signed', session });
@@ -87,11 +91,11 @@ export function OfferPortal() {
     } finally {
       setIsRefreshing(false);
     }
-  }
+  }, [signrequestUuid]);
 
   useEffect(() => {
     void loadSession();
-  }, []);
+  }, [loadSession]);
 
   const activeSession =
     screen.kind === 'ready' ||
@@ -228,7 +232,7 @@ export function OfferPortal() {
                   {screen.kind === 'auth-required' && (
                     <button
                       type="button"
-                      onClick={() => router.push('/onboarding')}
+                      onClick={() => router.push(`/onboarding?return_to=${encodeURIComponent(returnTo)}`)}
                       className="inline-flex items-center gap-2 rounded-2xl bg-[#4c8fd8] px-5 py-3 font-semibold text-white shadow-lg shadow-[#4c8fd8]/20 transition hover:bg-[#3378bc]"
                     >
                       Verify in portal
