@@ -6,7 +6,8 @@ import { AdvantisLogo } from '@/components/brand/AdvantisLogo';
 import { WelcomeStep } from '@/components/onboarding/WelcomeStep';
 import { HROnboardingStep } from '@/components/onboarding/HROnboardingStep';
 import { OnboardingDashboard } from '@/components/onboarding/OnboardingDashboard';
-import { ArrowRight, Loader2, Phone, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Loader2, MailCheck, Phone, ShieldCheck } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -37,11 +38,14 @@ function formatUsPhoneNumber(value: string): string {
 
 // ── Auth Gate Component ──────────────────────────────────────
 function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
-  const [phase, setPhase] = useState<'identifier' | 'otp' | 'risk'>('identifier');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [phase, setPhase] = useState<'identifier' | 'otp' | 'magic-link' | 'risk'>('identifier');
   const [identifier, setIdentifier] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [riskChallengeId, setRiskChallengeId] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [devMagicToken, setDevMagicToken] = useState<string | null>(null);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,11 +58,53 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   const normalizedIdentifier = isPhone ? normalizedPhone : identifier.trim();
   const verificationDestination = isPhone ? formatUsPhoneNumber(identifier) : identifier.trim();
 
+  const handleMagicLinkVerify = useCallback(async (incomingChallengeId: string, magicToken: string) => {
+    setLoading(true);
+    setError('');
+    setPhase('magic-link');
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ challenge_id: incomingChallengeId, magic_token: magicToken, device_id: 'browser' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || 'This sign-in link is invalid or has expired.');
+        return;
+      }
+      router.replace('/onboarding');
+      if (data.next === 'authenticated') {
+        onAuthenticated();
+      } else if (data.next === 'risk_challenge') {
+        setRiskChallengeId(data.risk_challenge_id);
+        if (data.dev_otp_code) setDevCode(data.dev_otp_code);
+        setOtp(['', '', '', '', '', '']);
+        setPhase('risk');
+        setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      }
+    } catch {
+      setError('We could not verify your sign-in link right now.');
+    } finally {
+      setLoading(false);
+    }
+  }, [onAuthenticated, router]);
+
+  useEffect(() => {
+    const challengeIdFromUrl = searchParams.get('challenge_id');
+    const magicTokenFromUrl = searchParams.get('magic_token');
+    if (!challengeIdFromUrl || !magicTokenFromUrl) return;
+    void handleMagicLinkVerify(challengeIdFromUrl, magicTokenFromUrl);
+  }, [handleMagicLinkVerify, searchParams]);
+
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setLoading(true);
     setError('');
+    setDevCode(null);
+    setDevMagicToken(null);
     try {
       const res = await fetch(`${API_BASE}/auth/start`, {
         method: 'POST',
@@ -69,8 +115,13 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       if (!res.ok) { setError(data.detail || 'Failed to send verification code'); return; }
       setChallengeId(data.challenge_id);
       if (data.dev_otp_code) setDevCode(data.dev_otp_code);
-      setPhase('otp');
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      if (data.dev_magic_token) setDevMagicToken(data.dev_magic_token);
+      if (data.method === 'email') {
+        setPhase('magic-link');
+      } else {
+        setPhase('otp');
+        setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      }
     } catch {
       setError('Network error. Is the backend running?');
     } finally {
@@ -96,6 +147,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
         // Second OTP required via /auth/challenge/verify
         setRiskChallengeId(data.risk_challenge_id);
         if (data.dev_otp_code) setDevCode(data.dev_otp_code);
+        setDevMagicToken(null);
         setOtp(['', '', '', '', '', '']);
         setError('');
         setPhase('risk');
@@ -171,19 +223,29 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
             <div className="w-16 h-16 bg-[#eaf6fd] dark:bg-[#4c8fd8]/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
               {phase === 'identifier' ? (
                 <Phone className="w-8 h-8 text-[#2f6ea8] dark:text-[#72c9ef]" />
+              ) : phase === 'magic-link' ? (
+                <MailCheck className="w-8 h-8 text-[#2f6ea8] dark:text-[#72c9ef]" />
               ) : (
                 <ShieldCheck className="w-8 h-8 text-[#2f6ea8] dark:text-[#72c9ef]" />
               )}
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {phase === 'identifier' ? 'Verify your identity' : phase === 'risk' ? 'Additional verification' : 'Enter verification code'}
+              {phase === 'identifier'
+                ? 'Verify your identity'
+                : phase === 'risk'
+                  ? 'Additional verification'
+                  : phase === 'magic-link'
+                    ? 'Check your email'
+                    : 'Enter verification code'}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
               {phase === 'identifier'
                 ? 'Enter the phone number or email associated with your application.'
                 : phase === 'risk'
-                ? 'For your security, please enter the additional verification code.'
-                : `We sent a 6-digit code to ${verificationDestination}`}
+                  ? 'For your security, please enter the additional verification code.'
+                  : phase === 'magic-link'
+                    ? `We emailed a secure sign-in link to ${verificationDestination}. Open it on this device to continue.`
+                    : `We sent a 6-digit code to ${verificationDestination}`}
             </p>
           </div>
 
@@ -204,20 +266,37 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#4c8fd8] hover:bg-[#3378bc] disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-[#4c8fd8]/30 disabled:shadow-none"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <>Send verification code <ArrowRight className="w-4 h-4" /></>
+                  <>{isEmail ? 'Email sign-in link' : 'Send verification code'} <ArrowRight className="w-4 h-4" /></>
                 )}
               </button>
             </form>
           ) : (
             <div className="space-y-4">
-              {devCode && (
+              {phase !== 'magic-link' && devCode && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-center">
                   <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">DEV MODE — Code:</p>
                   <p className="text-2xl font-mono font-bold text-amber-700 dark:text-amber-300 tracking-[0.3em]">{devCode}</p>
                 </div>
               )}
 
-              <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+              {phase === 'magic-link' ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[#cfe4f4] bg-[#f5fbff] px-4 py-4 text-sm leading-6 text-[#49637e] dark:border-[#25547d] dark:bg-slate-950/40 dark:text-slate-300">
+                    The secure link in your email will sign you in automatically. If you open it and still land here, refresh once and try the link again.
+                  </div>
+                  {devMagicToken && challengeId && (
+                    <button
+                      type="button"
+                      onClick={() => void handleMagicLinkVerify(challengeId, devMagicToken)}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 font-bold rounded-xl transition-all"
+                    >
+                      Use dev magic link token
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
                 {otp.map((digit, i) => (
                   <input
                     key={i}
@@ -231,7 +310,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                     className="w-12 h-14 text-center text-2xl font-bold bg-slate-50 dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#72c9ef]/50 focus:border-[#4c8fd8] transition-all"
                   />
                 ))}
-              </div>
+                </div>
+              )}
 
               {error && <p className="text-sm text-rose-500 text-center">{error}</p>}
 
@@ -242,7 +322,14 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
               )}
 
               <button
-                onClick={() => { setPhase('identifier'); setOtp(['', '', '', '', '', '']); setError(''); setDevCode(null); }}
+                onClick={() => {
+                  setPhase('identifier');
+                  setOtp(['', '', '', '', '', '']);
+                  setError('');
+                  setDevCode(null);
+                  setDevMagicToken(null);
+                  router.replace('/onboarding');
+                }}
                 className="w-full text-center text-sm text-slate-500 hover:text-[#3378bc] dark:hover:text-[#72c9ef] transition-colors font-medium py-2"
               >
                 Use a different phone number or email
