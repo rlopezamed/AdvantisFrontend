@@ -20,9 +20,6 @@ export default function Home() {
             <h1 className="mt-6 max-w-xl text-4xl font-extrabold tracking-tight text-[#173f6c] sm:text-5xl">
               Offer review, onboarding, and credentialing in one Advantis workspace.
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#4c647e]">
-              Move from assignment confirmation to completed onboarding with a portal that matches the Advantis Medical brand and keeps every next step in one place.
-            </p>
           </div>
 
           <div className="grid gap-4 self-center">
