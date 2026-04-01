@@ -10,6 +10,7 @@ import { ArrowRight, Loader2, MailCheck, Phone, ShieldCheck } from 'lucide-react
 import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+const OFFER_RETURN_TO_KEY = 'advantis.offer_return_to';
 
 type StepState = 'auth' | 'welcome' | 'hr-docs' | 'credentialing';
 
@@ -82,9 +83,9 @@ function AuthGate({
         setError(data.detail || 'This sign-in link is invalid or has expired.');
         return;
       }
-      if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
-      else router.replace('/onboarding');
       if (data.next === 'authenticated') {
+        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
+        else router.replace('/onboarding');
         onAuthenticated();
       } else if (data.next === 'risk_challenge') {
         setRiskChallengeId(data.risk_challenge_id);
@@ -375,8 +376,13 @@ export default function OnboardingPage() {
 
     const params = new URLSearchParams(window.location.search);
     const returnToValue = params.get('return_to');
+    const storedReturnTo = window.sessionStorage.getItem(OFFER_RETURN_TO_KEY);
+    const safeStoredReturnTo =
+      storedReturnTo && storedReturnTo.startsWith('/offer') ? storedReturnTo : null;
     return {
-      returnTo: returnToValue && returnToValue.startsWith('/') ? returnToValue : null,
+      returnTo:
+        (returnToValue && returnToValue.startsWith('/') ? returnToValue : null) ||
+        safeStoredReturnTo,
       challengeId: params.get('challenge_id'),
       magicToken: params.get('magic_token'),
     };

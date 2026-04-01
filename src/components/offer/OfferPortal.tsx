@@ -16,6 +16,8 @@ import { AdvantisLogo } from '@/components/brand/AdvantisLogo';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getMyOfferSigningSession, PortalApiError, type OfferSigningSession } from '@/lib/portal-api';
 
+const OFFER_RETURN_TO_KEY = 'advantis.offer_return_to';
+
 type ScreenState =
   | { kind: 'loading' }
   | { kind: 'auth-required'; message: string }
@@ -40,6 +42,8 @@ export function OfferPortal() {
   const [screen, setScreen] = useState<ScreenState>({ kind: 'loading' });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const signrequestUuid = searchParams.get('signrequest_uuid');
+  const offerUuid = searchParams.get('offer_uuid');
+  const resolvedOfferUuid = signrequestUuid || offerUuid;
   const returnTo = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
   const loadSession = useCallback(async (showSpinner = false) => {
@@ -47,7 +51,7 @@ export function OfferPortal() {
     else setScreen({ kind: 'loading' });
 
     try {
-      const session = await getMyOfferSigningSession(signrequestUuid);
+      const session = await getMyOfferSigningSession(resolvedOfferUuid);
 
       if (session.status === 'signed') {
         setScreen({ kind: 'signed', session });
@@ -91,11 +95,29 @@ export function OfferPortal() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [signrequestUuid]);
+  }, [resolvedOfferUuid]);
 
   useEffect(() => {
     void loadSession();
   }, [loadSession]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (resolvedOfferUuid) {
+      window.sessionStorage.setItem(OFFER_RETURN_TO_KEY, returnTo);
+      return;
+    }
+
+    const storedReturnTo = window.sessionStorage.getItem(OFFER_RETURN_TO_KEY);
+    if (
+      storedReturnTo &&
+      storedReturnTo.startsWith('/offer') &&
+      storedReturnTo !== returnTo
+    ) {
+      router.replace(storedReturnTo);
+    }
+  }, [resolvedOfferUuid, returnTo, router]);
 
   const activeSession =
     screen.kind === 'ready' ||
@@ -232,7 +254,17 @@ export function OfferPortal() {
                   {screen.kind === 'auth-required' && (
                     <button
                       type="button"
-                      onClick={() => router.push(`/onboarding?return_to=${encodeURIComponent(returnTo)}`)}
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          const storedReturnTo = resolvedOfferUuid
+                            ? returnTo
+                            : window.sessionStorage.getItem(OFFER_RETURN_TO_KEY) || returnTo;
+                          window.sessionStorage.setItem(OFFER_RETURN_TO_KEY, storedReturnTo);
+                          router.push(`/onboarding?return_to=${encodeURIComponent(storedReturnTo)}`);
+                          return;
+                        }
+                        router.push(`/onboarding?return_to=${encodeURIComponent(returnTo)}`);
+                      }}
                       className="inline-flex items-center gap-2 rounded-2xl bg-[#4c8fd8] px-5 py-3 font-semibold text-white shadow-lg shadow-[#4c8fd8]/20 transition hover:bg-[#3378bc]"
                     >
                       Verify in portal
