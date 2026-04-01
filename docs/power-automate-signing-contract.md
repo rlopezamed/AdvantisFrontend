@@ -79,3 +79,53 @@ That makes backend matching deterministic even if multiple applications share th
 - `fallback_url` is optional and is only for transition/QA. The portal should prefer the provider `embedUrl`.
 - The backend will infer `clinician_email` from the signer with `needs_to_sign=true` if you omit it, but sending it explicitly is safer.
 - The backend currently assumes the SignRequest API key uses token auth and fetches the latest signer `embedUrl` server-side.
+
+## Optional direct-to-offer magic link
+
+If you want Power Automate to send a one-click portal link instead of a generic sign-in prompt, call the auth service after `signrequest-created`.
+
+### Endpoint
+
+`POST {BACKEND_API_BASE}/api/v1/auth/magic-link`
+
+### Headers
+
+```http
+Content-Type: application/json
+X-API-Key: {INTERNAL_API_KEY}
+```
+
+### Payload
+
+```json
+{
+  "identifier": "kristynwakefield@yahoo.com",
+  "return_to": "/offer?signrequest_uuid=2527b529-552b-4a25-9118-39166122843f",
+  "send_email": false
+}
+```
+
+### Response
+
+```json
+{
+  "challenge_id": "ch_abc123",
+  "method": "email",
+  "masked_destination": "kr***@yahoo.com",
+  "expires_at": "2026-04-01T18:30:00+00:00",
+  "magic_link": "https://portal.advantismed.com/onboarding?challenge_id=ch_abc123&magic_token=...&return_to=%2Foffer%3Fsignrequest_uuid%3D2527b529-552b-4a25-9118-39166122843f",
+  "sent": false
+}
+```
+
+### Recommended flow
+
+1. Call `/api/v1/signing/signrequest-created`.
+2. Call `/api/v1/auth/magic-link` with the traveler email and exact offer destination.
+3. Use the returned `magic_link` in your Advantis email or SMS workflow.
+
+### Notes
+
+- This endpoint only supports email identifiers.
+- `send_email=false` is the recommended Power Automate mode so Advantis controls the candidate-facing email.
+- Set `send_email=true` only if you want the backend to send the generic auth email immediately.
