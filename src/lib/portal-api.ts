@@ -26,9 +26,16 @@ export class PortalApiError extends Error {
   }
 }
 
-export async function getMyOfferSigningSession(signrequestUuid?: string | null): Promise<OfferSigningSession> {
-  const endpoint = signrequestUuid
-    ? `${API_BASE}/signing/me/session?signrequest_uuid=${encodeURIComponent(signrequestUuid)}`
+export async function getMyOfferSigningSession(params?: {
+  signrequestUuid?: string | null;
+  offerUuid?: string | null;
+}): Promise<OfferSigningSession> {
+  const search = new URLSearchParams();
+  if (params?.offerUuid) search.set('offer_uuid', params.offerUuid);
+  else if (params?.signrequestUuid) search.set('signrequest_uuid', params.signrequestUuid);
+
+  const endpoint = search.size
+    ? `${API_BASE}/signing/me/session?${search.toString()}`
     : `${API_BASE}/signing/me/session`;
 
   const response = await fetch(endpoint, {

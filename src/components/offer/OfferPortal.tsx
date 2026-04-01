@@ -51,7 +51,10 @@ export function OfferPortal() {
     else setScreen({ kind: 'loading' });
 
     try {
-      const session = await getMyOfferSigningSession(resolvedOfferUuid);
+      const session = await getMyOfferSigningSession({
+        offerUuid: offerUuid || undefined,
+        signrequestUuid: signrequestUuid || undefined,
+      });
 
       if (session.status === 'signed') {
         setScreen({ kind: 'signed', session });
@@ -95,7 +98,7 @@ export function OfferPortal() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [resolvedOfferUuid]);
+  }, [offerUuid, signrequestUuid]);
 
   useEffect(() => {
     void loadSession();
