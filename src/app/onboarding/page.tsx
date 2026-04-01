@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { AdvantisLogo } from '@/components/brand/AdvantisLogo';
 import { WelcomeStep } from '@/components/onboarding/WelcomeStep';
 import { HROnboardingStep } from '@/components/onboarding/HROnboardingStep';
 import { OnboardingDashboard } from '@/components/onboarding/OnboardingDashboard';
-import { ArrowRight, Loader2, Phone, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Loader2, Phone, ShieldCheck } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -15,6 +16,23 @@ function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
+}
+
+function normalizeUsPhoneNumber(value: string): string | null {
+  const digits = value.trim().replace(/\D/g, '');
+
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+
+  return null;
+}
+
+function formatUsPhoneNumber(value: string): string {
+  const normalized = normalizeUsPhoneNumber(value);
+  if (!normalized) return value.trim();
+
+  const nationalNumber = normalized.slice(2);
+  return `(${nationalNumber.slice(0, 3)}) ${nationalNumber.slice(3, 6)}-${nationalNumber.slice(6)}`;
 }
 
 // ── Auth Gate Component ──────────────────────────────────────
@@ -29,9 +47,12 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const isPhone = /^\+?\d[\d\s()-]{6,}$/.test(identifier.trim());
+  const normalizedPhone = normalizeUsPhoneNumber(identifier);
+  const isPhone = normalizedPhone !== null;
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim());
   const canSubmit = isPhone || isEmail;
+  const normalizedIdentifier = isPhone ? normalizedPhone : identifier.trim();
+  const verificationDestination = isPhone ? formatUsPhoneNumber(identifier) : identifier.trim();
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +63,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       const res = await fetch(`${API_BASE}/auth/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim() }),
+        body: JSON.stringify({ identifier: normalizedIdentifier }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Failed to send verification code'); return; }
@@ -145,13 +166,13 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-slate-200 dark:border-slate-700/50 rounded-[2rem] shadow-2xl shadow-indigo-500/10 p-8 sm:p-10">
+        <div className="bg-white/88 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/80 dark:border-slate-700/50 rounded-[2rem] shadow-2xl shadow-[#4c8fd8]/10 p-8 sm:p-10">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-500/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+            <div className="w-16 h-16 bg-[#eaf6fd] dark:bg-[#4c8fd8]/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
               {phase === 'identifier' ? (
-                <Phone className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                <Phone className="w-8 h-8 text-[#2f6ea8] dark:text-[#72c9ef]" />
               ) : (
-                <ShieldCheck className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                <ShieldCheck className="w-8 h-8 text-[#2f6ea8] dark:text-[#72c9ef]" />
               )}
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -162,7 +183,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                 ? 'Enter the phone number or email associated with your application.'
                 : phase === 'risk'
                 ? 'For your security, please enter the additional verification code.'
-                : `We sent a 6-digit code to ${identifier}`}
+                : `We sent a 6-digit code to ${verificationDestination}`}
             </p>
           </div>
 
@@ -174,13 +195,13 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="Phone number or email"
                 autoFocus
-                className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-center text-lg tracking-wide"
+                className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#72c9ef]/50 focus:border-[#4c8fd8] transition-all text-center text-lg tracking-wide"
               />
               {error && <p className="text-sm text-rose-500 text-center">{error}</p>}
               <button
                 type="submit"
                 disabled={!canSubmit || loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/30 disabled:shadow-none"
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#4c8fd8] hover:bg-[#3378bc] disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-[#4c8fd8]/30 disabled:shadow-none"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>Send verification code <ArrowRight className="w-4 h-4" /></>
@@ -207,7 +228,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                     value={digit}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                    className="w-12 h-14 text-center text-2xl font-bold bg-slate-50 dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                    className="w-12 h-14 text-center text-2xl font-bold bg-slate-50 dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#72c9ef]/50 focus:border-[#4c8fd8] transition-all"
                   />
                 ))}
               </div>
@@ -216,13 +237,13 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
               {loading && (
                 <div className="flex justify-center py-2">
-                  <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-[#4c8fd8] animate-spin" />
                 </div>
               )}
 
               <button
                 onClick={() => { setPhase('identifier'); setOtp(['', '', '', '', '', '']); setError(''); setDevCode(null); }}
-                className="w-full text-center text-sm text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium py-2"
+                className="w-full text-center text-sm text-slate-500 hover:text-[#3378bc] dark:hover:text-[#72c9ef] transition-colors font-medium py-2"
               >
                 Use a different phone number or email
               </button>
@@ -244,25 +265,7 @@ export default function OnboardingPage() {
     specialistName: string; specialistTitle: string;
   } | null>(null);
 
-  // Check if already authenticated on mount
-  useEffect(() => {
-    fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error('Not authenticated');
-      })
-      .then(() => {
-        // Authenticated — load profile + determine starting step
-        loadProfileAndStep();
-      })
-      .catch(() => {
-        setCurrentStep('auth');
-        setCheckingAuth(false);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function loadProfileAndStep() {
+  const loadProfileAndStep = useCallback(() => {
     // Fetch clinician profile
     fetch(`${API_BASE}/applications/me`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
@@ -299,7 +302,24 @@ export default function OnboardingPage() {
         setCurrentStep('welcome');
       })
       .finally(() => setCheckingAuth(false));
-  }
+  }, []);
+
+  // Check if already authenticated on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Not authenticated');
+      })
+      .then(() => {
+        // Authenticated — load profile + determine starting step
+        loadProfileAndStep();
+      })
+      .catch(() => {
+        setCurrentStep('auth');
+        setCheckingAuth(false);
+      });
+  }, [loadProfileAndStep]);
 
   function handleAuthenticated() {
     loadProfileAndStep();
@@ -307,36 +327,39 @@ export default function OnboardingPage() {
 
   if (checkingAuth) {
     return (
-      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+      <main className="min-h-screen bg-[#eff8fe] dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#4c8fd8] animate-spin" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 selection:bg-indigo-500/30 overflow-x-hidden transition-colors duration-300">
+    <main className="min-h-screen bg-[#eff8fe] dark:bg-slate-950 text-slate-900 dark:text-slate-50 selection:bg-[#72c9ef]/40 overflow-x-hidden transition-colors duration-300">
       {/* Background Visuals */}
-      <div className="fixed inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none z-0"></div>
-      <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px] pointer-events-none z-0"></div>
+      <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#72c9ef]/24 blur-[120px] pointer-events-none z-0"></div>
+      <div className="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#4c8fd8]/18 blur-[120px] pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 min-h-screen flex flex-col">
 
         {/* Global Header */}
-        <header className="mb-12 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-              Advantis Medical
-            </h1>
-            <p className="mt-2 text-sm text-slate-400 font-medium">Clinician Onboarding & Credentialing</p>
+        <header className="mb-12 flex flex-col gap-5 rounded-[2rem] border border-white/80 bg-white/78 px-5 py-5 shadow-[0_32px_90px_-60px_rgba(45,98,152,0.55)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <AdvantisLogo subtitle="Clinician onboarding and credentialing" />
+            <div className="hidden h-12 w-px bg-[#d3ebf8] sm:block" />
+            <div className="hidden sm:block">
+              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#4c8fd8]">Secure Portal</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#57708d]">
+                One branded workspace for identity verification, onboarding tasks, and credentialing progress.
+              </p>
+            </div>
           </div>
           {currentStep !== 'auth' && currentStep !== 'welcome' && profile?.name && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-200">{profile.name}</p>
-                <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-wide">{profile.role} - {profile.facility}</p>
+                <p className="text-xs text-[#4c8fd8] dark:text-[#72c9ef] font-medium tracking-wide">{profile.role} - {profile.facility}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg text-white font-bold tracking-wider">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#4c8fd8] to-[#72c9ef] flex items-center justify-center shadow-lg text-white font-bold tracking-wider">
                 {initials(profile.name)}
               </div>
             </motion.div>
@@ -378,7 +401,7 @@ export default function OnboardingPage() {
                 <div className="mb-4 md:mb-8 pr-16 md:pr-0">
                   <button
                     onClick={() => setCurrentStep('hr-docs')}
-                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium transition-colors"
+                    className="text-sm text-[#3378bc] dark:text-[#72c9ef] hover:text-[#245f97] dark:hover:text-[#9fe3ff] font-medium transition-colors"
                   >
                     ← Back to HR Documents
                   </button>

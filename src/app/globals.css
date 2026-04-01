@@ -3,8 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f5fbff;
+  --foreground: #12324f;
+  --brand-navy: #173f6c;
+  --brand-blue: #4c8fd8;
+  --brand-sky: #72c9ef;
+  --brand-mist: #e8f5fc;
+  --brand-gold: #f0c34d;
 }
 
 .dark {
@@ -20,8 +25,16 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(114, 201, 239, 0.2), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(76, 143, 216, 0.14), transparent 32%),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
   transition: background-color 0.3s ease;
+}
+
+::selection {
+  background: rgba(114, 201, 239, 0.4);
+  color: #12324f;
 }

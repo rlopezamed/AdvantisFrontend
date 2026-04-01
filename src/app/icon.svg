@@ -1,0 +1,15 @@
+<svg width="256" height="256" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="advantis-icon" x1="12" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7FD8F8" />
+      <stop offset="0.55" stop-color="#4F94D8" />
+      <stop offset="1" stop-color="#2B67A7" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="20" fill="url(#advantis-icon)" />
+  <path
+    d="M24 43.5L30.4 18H35.8L42 43.5H37.2L35.95 38H29.95L28.7 43.5H24ZM30.95 34.1H35L33.05 25.1L30.95 34.1Z"
+    fill="white"
+  />
+  <path d="M32.4 12.5L34.1 8.9L35.8 12.5L39.4 14.2L35.8 15.9L34.1 19.5L32.4 15.9L28.8 14.2L32.4 12.5Z" fill="#DFF7FF" />
+</svg>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, ShieldCheck, FileText, Building, ArrowRight, ArrowLeft,
   UploadCloud, CreditCard, Users, Clock, Loader2, AlertCircle,
-  ExternalLink, CheckSquare, Info,
+  ExternalLink, Info,
 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -287,31 +287,33 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
   }, []);
 
   const handleNext = async () => {
-    const pendingNow = steps.filter((s) => !s.completed);
-    const safeIdx = Math.min(currentSubStep, pendingNow.length - 1);
-    const currentStep = pendingNow[safeIdx];
+    const safeIdx = Math.min(currentSubStep, steps.length - 1);
+    const currentStep = steps[safeIdx];
     if (currentStep) {
-      const allDone = await markComplete(currentStep.id);
+      const allDone = currentStep.completed ? false : await markComplete(currentStep.id);
       if (allDone) { onNext(); return; }
     }
     // After marking complete, the step disappears — stay at same index
     // (which now points to the next pending step) or advance
-    setCurrentSubStep(0); // Reset to first pending after re-render
+    if (safeIdx >= steps.length - 1) {
+      onNext();
+      return;
+    }
+    setCurrentSubStep(safeIdx + 1);
     setConfirmSkip(false);
   };
 
   const handleSkip = () => {
-    const pendingNow = steps.filter((s) => !s.completed);
     const nextIdx = currentSubStep + 1;
-    if (nextIdx >= pendingNow.length) onNext();
+    if (nextIdx >= steps.length) onNext();
     else setCurrentSubStep(nextIdx);
     setConfirmSkip(false);
   };
 
   // Filter to only incomplete steps — completed ones disappear from the wizard
-  const pendingSteps = steps.filter((s) => !s.completed);
-  const completedCount = steps.length - pendingSteps.length;
-  const allDone = steps.length > 0 && pendingSteps.length === 0;
+  const completedCount = steps.filter((s) => s.completed).length;
+  const remainingCount = steps.length - completedCount;
+  const allDone = steps.length > 0 && completedCount === steps.length;
 
   // All steps completed — show completion screen then auto-advance
   useEffect(() => {
@@ -356,10 +358,10 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
     );
   }
 
-  // Clamp currentSubStep to valid range for pending steps
-  const safeIdx = Math.min(currentSubStep, pendingSteps.length - 1);
-  const currentStepData = pendingSteps[safeIdx];
-  const progressWidth = pendingSteps.length > 1 ? (safeIdx / (pendingSteps.length - 1)) * 100 : 100;
+  // Clamp currentSubStep to valid range for the full step sequence
+  const safeIdx = Math.min(currentSubStep, steps.length - 1);
+  const currentStepData = steps[safeIdx];
+  const progressWidth = steps.length > 1 ? (safeIdx / (steps.length - 1)) * 100 : 100;
 
   return (
     <div className="max-w-4xl mx-auto py-8">
@@ -368,7 +370,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
         <div className="mb-6 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-            {completedCount} of {steps.length} HR steps completed. {pendingSteps.length} remaining.
+            {completedCount} of {steps.length} HR steps completed. {remainingCount} remaining.
           </p>
         </div>
       )}
@@ -377,23 +379,26 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
       <div className="flex items-center justify-between mb-10 relative">
         <div className="absolute left-0 top-6 w-full h-1 bg-slate-200 dark:bg-slate-800 -z-10 rounded-full" />
         <div className="absolute left-0 top-6 h-1 bg-indigo-500 -z-10 rounded-full transition-all duration-500" style={{ width: `${progressWidth}%` }} />
-        {pendingSteps.map((step, idx) => {
+        {steps.map((step, idx) => {
           const isActive = idx === safeIdx;
+          const isCompleted = !!step.completed;
           const isPast = idx < safeIdx;
           return (
             <button key={step.id} onClick={() => { setCurrentSubStep(idx); setConfirmSkip(false); }} className="flex flex-col items-center gap-3 cursor-pointer">
               <div className={`w-12 h-12 rounded-full border-4 border-slate-100 dark:border-slate-950 flex items-center justify-center transition-colors duration-500 ${
                 isActive ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]'
+                  : isCompleted ? 'bg-emerald-500 text-white'
                   : isPast ? 'bg-indigo-500 text-white'
                   : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
               }`}>
-                {ICONS[step.icon || ''] || <FileText className="w-5 h-5" />}
+                {isCompleted && !isActive ? <Check className="w-5 h-5" /> : (ICONS[step.icon || ''] || <FileText className="w-5 h-5" />)}
               </div>
               <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center ${
                 isActive ? 'text-indigo-600 dark:text-indigo-400'
+                  : isCompleted ? 'text-emerald-600 dark:text-emerald-400'
                   : isPast ? 'text-slate-700 dark:text-slate-300'
                   : 'text-slate-400 dark:text-slate-600'
-              }`}>
+                }`}>
                 {step.title}
               </span>
             </button>
@@ -437,7 +442,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center gap-3"
             >
-              <p className="text-sm text-amber-700 dark:text-amber-300 flex-1 font-medium">Mark this step as completed, or skip it for now?</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 flex-1 font-medium">Complete this step now, or move forward and come back to it later.</p>
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => setConfirmSkip(false)} className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Go back</button>
                 <button onClick={handleSkip} className="px-3 py-1.5 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors">Skip for now</button>
@@ -450,7 +455,11 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
         {/* Navigation */}
         <div className="flex items-center justify-between gap-3 pt-5 border-t border-slate-200 dark:border-slate-800/80">
           <button
-            onClick={() => { setConfirmSkip(false); safeIdx === 0 ? onBack() : setCurrentSubStep((prev) => prev - 1); }}
+            onClick={() => {
+              setConfirmSkip(false);
+              if (safeIdx === 0) onBack();
+              else setCurrentSubStep((prev) => prev - 1);
+            }}
             className="flex items-center gap-2 px-5 py-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all font-medium whitespace-nowrap"
           >
             <ArrowLeft className="w-4 h-4" /> Back
@@ -459,7 +468,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
             onClick={() => setConfirmSkip(true)}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/30 whitespace-nowrap"
           >
-            {safeIdx === pendingSteps.length - 1 ? 'Go to Credentialing' : 'Continue'}
+            {safeIdx === steps.length - 1 ? 'Go to Credentialing' : 'Continue'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
