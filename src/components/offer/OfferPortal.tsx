@@ -35,6 +35,18 @@ function formatDocumentLabel(value: string): string {
     .join(' ');
 }
 
+function buildEmbeddedSignerUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.searchParams.set('hide_login', '1');
+    url.searchParams.set('hide_logo', '1');
+    url.searchParams.set('hide_title', '1');
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
 export function OfferPortal() {
   const router = useRouter();
   const pathname = usePathname();
@@ -132,6 +144,10 @@ export function OfferPortal() {
   const documentLabels = activeSession?.documents?.length
     ? activeSession.documents.map(formatDocumentLabel)
     : ['Travel Assignment Confirmation'];
+  const embeddedSignerUrl =
+    screen.kind === 'ready' && screen.session.embedUrl
+      ? buildEmbeddedSignerUrl(screen.session.embedUrl)
+      : null;
   const statusLabel =
     screen.kind === 'loading'
       ? 'Loading'
@@ -184,9 +200,9 @@ export function OfferPortal() {
               </div>
             )}
 
-            {screen.kind === 'ready' && screen.session.embedUrl && (
+            {screen.kind === 'ready' && embeddedSignerUrl && (
               <iframe
-                src={screen.session.embedUrl}
+                src={embeddedSignerUrl}
                 title="Travel Assignment Confirmation"
                 className="h-full min-h-[720px] w-full border-0 bg-white"
                 allow="fullscreen"
