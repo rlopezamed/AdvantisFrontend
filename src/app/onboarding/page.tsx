@@ -44,7 +44,7 @@ function AuthGate({
   incomingChallengeId,
   incomingMagicToken,
 }: {
-  onAuthenticated: () => void;
+  onAuthenticated: () => void | Promise<void>;
   returnTo: string | null;
   incomingChallengeId: string | null;
   incomingMagicToken: string | null;
@@ -84,9 +84,7 @@ function AuthGate({
         return;
       }
       if (data.next === 'authenticated') {
-        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
-        else router.replace('/onboarding');
-        onAuthenticated();
+        await onAuthenticated();
       } else if (data.next === 'risk_challenge') {
         setRiskChallengeId(data.risk_challenge_id);
         if (data.dev_otp_code) setDevCode(data.dev_otp_code);
@@ -99,7 +97,7 @@ function AuthGate({
     } finally {
       setLoading(false);
     }
-  }, [onAuthenticated, returnTo, router]);
+  }, [onAuthenticated]);
 
   useEffect(() => {
     if (!incomingChallengeId || !incomingMagicToken) return;
@@ -150,8 +148,7 @@ function AuthGate({
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Invalid code'); setOtp(['', '', '', '', '', '']); inputRefs.current[0]?.focus(); return; }
       if (data.next === 'authenticated') {
-        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
-        onAuthenticated();
+        await onAuthenticated();
       } else if (data.next === 'risk_challenge') {
         // Second OTP required via /auth/challenge/verify
         setRiskChallengeId(data.risk_challenge_id);
@@ -182,8 +179,7 @@ function AuthGate({
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Invalid code'); setOtp(['', '', '', '', '', '']); inputRefs.current[0]?.focus(); return; }
       if (data.next === 'authenticated') {
-        if (returnTo && returnTo.startsWith('/')) router.replace(returnTo);
-        onAuthenticated();
+        await onAuthenticated();
       }
     } catch {
       setError('Verification failed');
@@ -389,6 +385,23 @@ export default function OnboardingPage() {
   });
   const returnTo = queryContext.returnTo;
 
+  const waitForAuthenticatedSession = useCallback(async () => {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await fetch(`${API_BASE}/auth/me`, {
+        credentials: 'include',
+        cache: 'no-store',
+      }).catch(() => null);
+
+      if (response?.ok) return true;
+
+      if (attempt < 3) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+      }
+    }
+
+    return false;
+  }, []);
+
   const loadProfileAndStep = useCallback(() => {
     if (returnTo && returnTo.startsWith('/')) {
       router.replace(returnTo);
@@ -435,7 +448,7 @@ export default function OnboardingPage() {
 
   // Check if already authenticated on mount
   useEffect(() => {
-    fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    fetch(`${API_BASE}/auth/me`, { credentials: 'include', cache: 'no-store' })
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error('Not authenticated');
@@ -450,9 +463,16 @@ export default function OnboardingPage() {
       });
   }, [loadProfileAndStep]);
 
-  function handleAuthenticated() {
+  const handleAuthenticated = useCallback(async () => {
+    setCheckingAuth(true);
+    const isAuthenticated = await waitForAuthenticatedSession();
+    if (!isAuthenticated) {
+      setCurrentStep('auth');
+      setCheckingAuth(false);
+      return;
+    }
     loadProfileAndStep();
-  }
+  }, [loadProfileAndStep, waitForAuthenticatedSession]);
 
   if (checkingAuth) {
     return (
