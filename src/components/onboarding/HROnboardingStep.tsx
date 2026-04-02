@@ -80,6 +80,8 @@ interface StepDef {
   content_blocks?: ContentBlock[];
   completed?: boolean;
   completed_at?: string | null;
+  skipped?: boolean;
+  skipped_at?: string | null;
 }
 
 // ── Simple markdown bold renderer ───────────────────────────
@@ -252,7 +254,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
         return;
       }
 
-      const firstIncomplete = data.steps.findIndex((s) => !s.completed);
+      const firstIncomplete = data.steps.findIndex((s) => !s.completed && !s.skipped);
       if (firstIncomplete >= 0) setCurrentSubStep(firstIncomplete);
     } catch {
       // Fallback: fetch step definitions without completion status
@@ -286,6 +288,22 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
     return false;
   }, []);
 
+  const markSkipped = useCallback(async (stepId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/onboarding/me/skip`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step_id: stepId }),
+      });
+      if (res.ok) {
+        const data: { steps: StepDef[]; all_completed: boolean } = await res.json();
+        setSteps(data.steps);
+        return data.all_completed;
+      }
+    } catch { /* no-op */ }
+    return false;
+  }, []);
+
   const handleNext = async () => {
     const safeIdx = Math.min(currentSubStep, steps.length - 1);
     const currentStep = steps[safeIdx];
@@ -303,17 +321,24 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
     setConfirmSkip(false);
   };
 
-  const handleSkip = () => {
-    const nextIdx = currentSubStep + 1;
+  const handleSkip = async () => {
+    const safeIdx = Math.min(currentSubStep, steps.length - 1);
+    const currentStep = steps[safeIdx];
+    if (!currentStep) return;
+
+    const allDone = currentStep.skipped ? false : await markSkipped(currentStep.id);
+    if (allDone) { onNext(); return; }
+
+    const nextIdx = safeIdx + 1;
     if (nextIdx >= steps.length) onNext();
     else setCurrentSubStep(nextIdx);
     setConfirmSkip(false);
   };
 
-  // Filter to only incomplete steps — completed ones disappear from the wizard
   const completedCount = steps.filter((s) => s.completed).length;
-  const remainingCount = steps.length - completedCount;
-  const allDone = steps.length > 0 && completedCount === steps.length;
+  const skippedCount = steps.filter((s) => s.skipped).length;
+  const remainingCount = steps.length - completedCount - skippedCount;
+  const allDone = steps.length > 0 && completedCount + skippedCount === steps.length;
 
   // All steps completed — show completion screen then auto-advance
   useEffect(() => {
@@ -347,7 +372,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-3">HR Onboarding Complete!</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
-            All {steps.length} steps have been completed. Taking you to the credentialing portal now...
+            All {steps.length} HR steps have been addressed. Taking you to the credentialing portal now...
           </p>
           <div className="flex items-center justify-center gap-2 text-indigo-500">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -366,11 +391,11 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
   return (
     <div className="max-w-4xl mx-auto py-8">
       {/* Completed summary */}
-      {completedCount > 0 && (
+      {(completedCount > 0 || skippedCount > 0) && (
         <div className="mb-6 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-            {completedCount} of {steps.length} HR steps completed. {remainingCount} remaining.
+            {completedCount} completed, {skippedCount} skipped, {remainingCount} remaining.
           </p>
         </div>
       )}
@@ -382,20 +407,23 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
         {steps.map((step, idx) => {
           const isActive = idx === safeIdx;
           const isCompleted = !!step.completed;
+          const isSkipped = !!step.skipped;
           const isPast = idx < safeIdx;
           return (
             <button key={step.id} onClick={() => { setCurrentSubStep(idx); setConfirmSkip(false); }} className="flex flex-col items-center gap-3 cursor-pointer">
               <div className={`w-12 h-12 rounded-full border-4 border-slate-100 dark:border-slate-950 flex items-center justify-center transition-colors duration-500 ${
                 isActive ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]'
                   : isCompleted ? 'bg-emerald-500 text-white'
+                  : isSkipped ? 'bg-amber-500 text-white'
                   : isPast ? 'bg-indigo-500 text-white'
                   : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
               }`}>
-                {isCompleted && !isActive ? <Check className="w-5 h-5" /> : (ICONS[step.icon || ''] || <FileText className="w-5 h-5" />)}
+                {(isCompleted || isSkipped) && !isActive ? <Check className="w-5 h-5" /> : (ICONS[step.icon || ''] || <FileText className="w-5 h-5" />)}
               </div>
               <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center ${
                 isActive ? 'text-indigo-600 dark:text-indigo-400'
                   : isCompleted ? 'text-emerald-600 dark:text-emerald-400'
+                  : isSkipped ? 'text-amber-600 dark:text-amber-400'
                   : isPast ? 'text-slate-700 dark:text-slate-300'
                   : 'text-slate-400 dark:text-slate-600'
                 }`}>
