@@ -1,8 +1,52 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, Loader2 } from 'lucide-react';
 import { AdvantisLogo } from '@/components/brand/AdvantisLogo';
+import { API_BASE } from '@/lib/portal-api';
 
 export default function Home() {
+  const router = useRouter();
+  // 'resolving' = auto-routing to the right step; 'manual' = user opted to choose.
+  const [mode, setMode] = useState<'resolving' | 'manual'>('resolving');
+
+  useEffect(() => {
+    if (mode !== 'resolving') return;
+    let cancelled = false;
+
+    (async () => {
+      // The /onboarding orchestrator handles auth and full TAC -> HR ->
+      // credentialing routing, so we just hand off to it.
+      if (!cancelled) router.replace('/onboarding');
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, router]);
+
+  if (mode === 'resolving') {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-[#eff8fe] px-4 py-10">
+        <div className="absolute left-[-10%] top-[-8%] h-[20rem] w-[20rem] rounded-full bg-[#74cef3]/30 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-14%] right-[-8%] h-[24rem] w-[24rem] rounded-full bg-[#4c8fd8]/20 blur-[140px] pointer-events-none" />
+        <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-lg flex-col items-center justify-center text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4c8fd8]" />
+          <p className="mt-4 text-base font-medium text-[#173f6c]">Taking you to where you left off…</p>
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            className="mt-3 text-sm font-semibold text-[#3378bc] underline-offset-2 hover:underline"
+          >
+            Choose manually instead
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#eff8fe] px-4 py-10">
       <div className="absolute left-[-10%] top-[-8%] h-[20rem] w-[20rem] rounded-full bg-[#74cef3]/30 blur-[120px] pointer-events-none" />

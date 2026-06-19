@@ -5,9 +5,11 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle,
+  Clock,
   ExternalLink,
   FileSignature,
   Loader2,
+  Mail,
   RefreshCw,
   ShieldCheck,
   TriangleAlert,
@@ -53,6 +55,30 @@ export function OfferPortal() {
   const searchParams = useSearchParams();
   const [screen, setScreen] = useState<ScreenState>({ kind: 'loading' });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLocalDev, setIsLocalDev] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsLocalDev(['localhost', '127.0.0.1'].includes(window.location.hostname));
+  }, []);
+
+  const showMockSigned = useCallback(() => {
+    setScreen({
+      kind: 'signed',
+      session: {
+        provider: 'signrequest',
+        status: 'signed',
+        documents: ['tac'],
+        embedUrl: null,
+        fallbackUrl: null,
+        signed: true,
+        declined: false,
+        signedAt: new Date().toISOString(),
+        declinedAt: null,
+        lastSyncedAt: new Date().toISOString(),
+      },
+    });
+  }, []);
   const signrequestUuid = searchParams.get('signrequest_uuid');
   const offerUuid = searchParams.get('offer_uuid');
   const resolvedOfferUuid = signrequestUuid || offerUuid;
@@ -181,15 +207,28 @@ export function OfferPortal() {
                 Review and complete your Travel Assignment Confirmation inside the portal.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => void loadSession(true)}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#4c8fd8] hover:text-[#2f6ea8] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh status
-            </button>
+            <div className="flex items-center gap-2">
+              {isLocalDev && (
+                <button
+                  type="button"
+                  onClick={showMockSigned}
+                  title="Local dev only — preview the signed experience without a real contract"
+                  className="inline-flex items-center gap-2 rounded-xl border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Mock signed
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void loadSession(true)}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#4c8fd8] hover:text-[#2f6ea8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh status
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 w-full relative rounded-[1.5rem] overflow-hidden shadow-sm border border-slate-300 bg-white">
@@ -236,7 +275,7 @@ export function OfferPortal() {
 
                 <h2 className="text-2xl font-bold text-slate-900">
                   {screen.kind === 'signed'
-                    ? 'Assignment Confirmation Signed'
+                    ? 'Thank You & Welcome Aboard!'
                     : screen.kind === 'declined'
                       ? 'Assignment Confirmation Declined'
                       : screen.kind === 'auth-required'
@@ -248,7 +287,7 @@ export function OfferPortal() {
 
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
                   {screen.kind === 'signed'
-                    ? 'Your Travel Assignment Confirmation has been completed successfully. You can continue into the onboarding portal now.'
+                    ? 'Thank you for reviewing and signing your Travel Assignment Confirmation. That’s everything we need from you for now — no further action is required at this time. Our team will be in touch shortly with your next steps.'
                     : screen.kind === 'declined'
                       ? 'This assignment confirmation was declined. If that was not intentional, please contact your recruiter or HR specialist.'
                       : screen.kind === 'auth-required'
@@ -257,6 +296,29 @@ export function OfferPortal() {
                           ? screen.message
                           : screen.message}
                 </p>
+
+                {screen.kind === 'signed' && (
+                  <div className="mt-8 w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-50 px-6 py-5 text-left">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">What to expect next</p>
+                    <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600">
+                      <li className="flex gap-3">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        Standard HR steps — including I-9 employment eligibility verification and background checks.
+                      </li>
+                      <li className="flex gap-3">
+                        <FileSignature className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        Credentialing steps to get you cleared and ready for your assignment.
+                      </li>
+                      <li className="flex gap-3">
+                        <CheckCircle className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        It helps to start gathering your documents now (photo ID, work history, and references) so you can move quickly.
+                      </li>
+                    </ul>
+                    <p className="mt-5 text-sm font-semibold text-[#2f6ea8]">
+                      We’re thrilled to have you — welcome to the Advantis Medical team!
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                   {(screen.kind === 'preparing' || screen.kind === 'error') && (
@@ -291,18 +353,7 @@ export function OfferPortal() {
                     </button>
                   )}
 
-                  {screen.kind === 'signed' && (
-                    <button
-                      type="button"
-                      onClick={() => router.push('/onboarding')}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-[#4c8fd8] px-5 py-3 font-semibold text-white shadow-lg shadow-[#4c8fd8]/20 transition hover:bg-[#3378bc]"
-                    >
-                      Continue to onboarding
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {activeSession?.fallbackUrl && (
+                  {activeSession?.fallbackUrl && screen.kind !== 'signed' && (
                     <a
                       href={activeSession.fallbackUrl}
                       target="_blank"
@@ -324,7 +375,7 @@ export function OfferPortal() {
             <AdvantisLogo tone="light" compact className="mb-6" />
             <h2 className="text-xl font-bold text-white mb-2">Travel Assignment Confirmation</h2>
             <p className="text-sm text-slate-400 mb-8">
-              We&apos;ll keep this signing experience inside the Advantis portal while tracking the real document status from the provider.
+              Your assignment documents, kept secure in one place.
             </p>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
@@ -366,23 +417,40 @@ export function OfferPortal() {
               )}
             </div>
 
-            <div className="mt-8 rounded-3xl border border-white/10 bg-slate-950/20 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">What to expect</p>
-              <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-300">
-                <li className="flex gap-3">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
-                  Sign within the portal instead of jumping out to a separate email flow.
-                </li>
-                <li className="flex gap-3">
-                  <FileSignature className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
-                  The provider handles initials, dates, and audit trail on the real document.
-                </li>
-                <li className="flex gap-3">
-                  <RefreshCw className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
-                  If your status does not update right away, use refresh and we&apos;ll resync it from SignRequest.
-                </li>
-              </ul>
-            </div>
+            {screen.kind !== 'signed' && (
+              <div className="mt-8 rounded-3xl border border-white/10 bg-slate-950/20 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">What to expect</p>
+                <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-300">
+                  <li className="flex gap-3">
+                    <FileSignature className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
+                    <span>There are usually two documents to sign. Keep going through each one until you reach a confirmation page letting you know everything is signed.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <Clock className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
+                    <span>Most clinicians finish in about 5&ndash;10 minutes.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <Mail className="mt-0.5 h-4 w-4 flex-none text-[#72c9ef]" />
+                    <span>
+                      Questions? Email{' '}
+                      <a
+                        href="mailto:hr@advantismed.com"
+                        className="font-semibold text-[#72c9ef] underline-offset-2 hover:underline"
+                      >
+                        hr@advantismed.com
+                      </a>
+                      .
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {screen.kind === 'signed' && (
+              <div className="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm leading-relaxed text-emerald-100">
+                No further action is needed right now. We&apos;ll email you as soon as your next steps are ready.
+              </div>
+            )}
           </div>
 
           <div className="mt-10 space-y-4">
@@ -403,16 +471,6 @@ export function OfferPortal() {
               </button>
             )}
 
-            {screen.kind === 'signed' && (
-              <button
-                type="button"
-                onClick={() => router.push('/onboarding')}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4c8fd8] py-4 font-bold text-white shadow-lg shadow-[#4c8fd8]/20 transition hover:bg-[#3378bc]"
-              >
-                Go to onboarding
-                <ArrowRight className="h-5 w-5" />
-              </button>
-            )}
 
             {screen.kind === 'error' && activeSession?.fallbackUrl && (
               <a

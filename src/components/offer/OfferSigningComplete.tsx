@@ -201,7 +201,7 @@ export function OfferSigningComplete() {
 
                 <h2 className="text-3xl font-bold text-slate-900">
                   {screen.kind === 'signed'
-                    ? 'You\'re All Set'
+                    ? 'Thank You & Welcome Aboard!'
                     : screen.kind === 'ready'
                       ? 'Signature Still In Progress'
                       : screen.kind === 'declined'
@@ -215,7 +215,7 @@ export function OfferSigningComplete() {
 
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
                   {screen.kind === 'signed'
-                    ? 'Your Travel Assignment Confirmation has been signed successfully. You can continue directly into the HR onboarding steps now.'
+                    ? 'Thank you for reviewing and signing your Travel Assignment Confirmation. That’s everything we need from you for now — no further action is required at this time. Our team will be in touch shortly with your next steps.'
                     : screen.kind === 'ready'
                       ? 'It looks like the document is still open for signing. If you just finished, refresh once. Otherwise, return to the contract to complete the final signature steps.'
                       : screen.kind === 'declined'
@@ -231,18 +231,30 @@ export function OfferSigningComplete() {
                   </p>
                 )}
 
-                <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                  {screen.kind === 'signed' && (
-                    <button
-                      type="button"
-                      onClick={() => router.push('/onboarding')}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-[#4c8fd8] px-6 py-3 font-semibold text-white shadow-lg shadow-[#4c8fd8]/20 transition hover:bg-[#3378bc]"
-                    >
-                      Continue to HR Steps
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  )}
+                {screen.kind === 'signed' && (
+                  <div className="mx-auto mt-8 w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-50 px-6 py-5 text-left">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">What to expect next</p>
+                    <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600">
+                      <li className="flex gap-3">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        Standard HR steps — including I-9 employment eligibility verification and background checks.
+                      </li>
+                      <li className="flex gap-3">
+                        <CheckCircle className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        Credentialing steps to get you cleared and ready for your assignment.
+                      </li>
+                      <li className="flex gap-3">
+                        <RefreshCw className="mt-0.5 h-4 w-4 flex-none text-[#4c8fd8]" />
+                        It helps to start gathering your documents now (photo ID, work history, and references) so you can move quickly.
+                      </li>
+                    </ul>
+                    <p className="mt-5 text-sm font-semibold text-[#2f6ea8]">
+                      We’re thrilled to have you — welcome to the Advantis Medical team!
+                    </p>
+                  </div>
+                )}
 
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
                   {(screen.kind === 'ready' || screen.kind === 'preparing' || screen.kind === 'error') && (
                     <button
                       type="button"
@@ -284,9 +296,9 @@ export function OfferSigningComplete() {
         <div className="w-full lg:w-[390px] bg-[#102948] p-8 lg:p-10 flex flex-col justify-between border-l border-white/10">
           <div>
             <AdvantisLogo tone="light" compact className="mb-6" />
-            <h2 className="text-xl font-bold text-white">Next stop: HR onboarding</h2>
+            <h2 className="text-xl font-bold text-white">You&apos;re all set for now</h2>
             <p className="mt-3 text-sm leading-7 text-slate-400">
-              Once your signature is confirmed, we&apos;ll send you straight into the remaining onboarding steps so you can keep momentum.
+              Your Travel Assignment Confirmation is complete. There&apos;s nothing else you need to do right now — our team will reach out with your next steps shortly.
             </p>
 
             <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-5">
@@ -332,9 +344,9 @@ export function OfferSigningComplete() {
           <div className="mt-8 rounded-3xl border border-white/10 bg-slate-950/20 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">What happens next</p>
             <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-300">
-              <li>We confirm the provider marked this document as signed.</li>
-              <li>Once confirmed, you can continue into the HR onboarding steps.</li>
-              <li>If the signed status does not appear right away, refresh once and we&apos;ll resync it.</li>
+              <li>Standard HR steps, including I-9 verification and background checks.</li>
+              <li>Credentialing steps to get you cleared for your assignment.</li>
+              <li>We&apos;ll email you when your next steps are ready — no action needed right now.</li>
             </ul>
           </div>
         </div>

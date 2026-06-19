@@ -355,6 +355,8 @@ function AuthGate({
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<StepState>('auth');
+  const [hrReviewMode, setHrReviewMode] = useState(false);
+  const [hrReady, setHrReady] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [profile, setProfile] = useState<{ name: string; role: string; facility: string } | null>(null);
   const [appData, setAppData] = useState<{
@@ -428,17 +430,28 @@ export default function OnboardingPage() {
       })
       .catch(() => {});
 
-    // Check HR step completion to determine starting view
-    fetch(`${API_BASE}/onboarding/me`, { credentials: 'include' })
+    // Resolve where the clinician should go next: TAC (hard gate) -> HR
+    // (only when ready) -> Credentialing. The backend is the source of truth.
+    fetch(`${API_BASE}/onboarding/me/journey`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.all_completed) {
-          setCurrentStep('credentialing');
-        } else if (data?.steps?.some((s: { completed: boolean }) => s.completed)) {
-          setCurrentStep('hr-docs');
-        } else {
+        if (!data) {
           setCurrentStep('welcome');
+          return;
         }
+        if (data.next === 'tac') {
+          const uuid = data?.tac?.offer_uuid;
+          router.replace(uuid ? `/offer?offer_uuid=${encodeURIComponent(uuid)}` : '/offer');
+          return;
+        }
+        if (data.next === 'hr') {
+          setHrReady(true);
+          setCurrentStep(data?.hr?.any_completed ? 'hr-docs' : 'welcome');
+          return;
+        }
+        // credentialing
+        setHrReady(data?.hr?.ready ?? false);
+        setCurrentStep('credentialing');
       })
       .catch(() => {
         setCurrentStep('welcome');
@@ -544,8 +557,9 @@ export default function OnboardingPage() {
             {currentStep === 'hr-docs' && (
               <motion.div key="hr-docs" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.4 }} className="flex-1">
                 <HROnboardingStep
-                  onBack={() => setCurrentStep('welcome')}
-                  onNext={() => setCurrentStep('credentialing')}
+                  reviewMode={hrReviewMode}
+                  onBack={() => { setHrReviewMode(false); setCurrentStep('welcome'); }}
+                  onNext={() => { setHrReviewMode(false); setCurrentStep('credentialing'); }}
                 />
               </motion.div>
             )}
@@ -553,12 +567,18 @@ export default function OnboardingPage() {
             {currentStep === 'credentialing' && (
               <motion.div key="credentialing" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.4 }} className="flex-1">
                 <div className="mb-4 md:mb-8 pr-16 md:pr-0">
-                  <button
-                    onClick={() => setCurrentStep('hr-docs')}
-                    className="text-sm text-[#3378bc] dark:text-[#72c9ef] hover:text-[#245f97] dark:hover:text-[#9fe3ff] font-medium transition-colors"
-                  >
-                    ← Back to HR Documents
-                  </button>
+                  {hrReady ? (
+                    <button
+                      onClick={() => { setHrReviewMode(true); setCurrentStep('hr-docs'); }}
+                      className="text-sm text-[#3378bc] dark:text-[#72c9ef] hover:text-[#245f97] dark:hover:text-[#9fe3ff] font-medium transition-colors"
+                    >
+                      ← Back to HR Documents
+                    </button>
+                  ) : (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Your HR onboarding steps will appear here once your records are ready — no action needed on those yet.
+                    </p>
+                  )}
                   <h2 className="text-2xl md:text-3xl font-bold mt-2 md:mt-4 text-slate-900 dark:text-white">Clinical Credentialing Portal</h2>
                   <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-1 md:mt-2 max-w-2xl">Manage your intensive clinical uploads and verifications. Our AI Agent will review them instantly.</p>
                 </div>

@@ -19,8 +19,7 @@ This shape works with the backend as implemented and stays close to the SignRequ
 
 ```json
 {
-  "application_id": 100123,
-  "external_id": "20691280",
+  "offer_external_id": "20691280",
   "clinician_email": "kristynwakefield@yahoo.com",
   "documents": ["tac", "state_tac"],
   "fallback_url": "https://amedhr.signrequest.com/r/document/.../signer_token=...",
@@ -51,12 +50,13 @@ This shape works with the backend as implemented and stays close to the SignRequ
 
 ## Required fields
 
-At minimum, the backend needs enough information to map the SignRequest to an application and traveler.
+At minimum, the backend needs enough information to map the SignRequest to an offer or traveler.
 
 Send one of:
 
+- `offer_uuid`
+- `offer_external_id` or `external_id`
 - `application_id`
-- `external_id`
 - `clinician_email`
 
 And also send:
@@ -67,11 +67,12 @@ And also send:
 
 Use this priority order when composing the payload:
 
-1. `application_id`
-2. `external_id`
-3. `clinician_email`
+1. `offer_uuid`
+2. `offer_external_id` or `external_id`
+3. `application_id`
+4. `clinician_email`
 
-That makes backend matching deterministic even if multiple applications share the same clinician email historically.
+That makes backend matching deterministic even if multiple applications or offers share the same clinician email historically.
 
 ## Notes
 
@@ -79,6 +80,25 @@ That makes backend matching deterministic even if multiple applications share th
 - `fallback_url` is optional and is only for transition/QA. The portal should prefer the provider `embedUrl`.
 - The backend will infer `clinician_email` from the signer with `needs_to_sign=true` if you omit it, but sending it explicitly is safer.
 - The backend currently assumes the SignRequest API key uses token auth and fetches the latest signer `embedUrl` server-side.
+
+## Recommended live sequence
+
+Use this order in Power Automate for the portal-first signing flow:
+
+1. Generate TAC and state TAC.
+2. Create the SignRequest in preparation mode if needed.
+3. Add signers and notifiers.
+4. Finalize/send the SignRequest.
+5. Call `/api/v1/signing/signrequest-created`.
+6. Read the returned `offer_uuid`.
+7. Call `/api/v1/auth/magic-link` with that exact `offer_uuid`.
+8. Email the returned `magic_link` to the traveler from your Advantis workflow.
+
+Important:
+
+- If you register the SignRequest before finalize/send, the portal will usually show `preparing`.
+- The embedded signer appears only after the provider returns a real signer `embedUrl`.
+- The safest user experience is to send the portal email only after SignRequest has been finalized.
 
 ## Optional direct-to-offer magic link
 
@@ -100,7 +120,8 @@ X-API-Key: {INTERNAL_API_KEY}
 ```json
 {
   "identifier": "kristynwakefield@yahoo.com",
-  "return_to": "/offer?signrequest_uuid=2527b529-552b-4a25-9118-39166122843f",
+  "offer_uuid": "off_1234567890abcdef",
+  "return_to": "/offer?offer_uuid=off_1234567890abcdef",
   "send_email": false
 }
 ```
@@ -113,16 +134,17 @@ X-API-Key: {INTERNAL_API_KEY}
   "method": "email",
   "masked_destination": "kr***@yahoo.com",
   "expires_at": "2026-04-01T18:30:00+00:00",
-  "magic_link": "https://portal.advantismed.com/onboarding?challenge_id=ch_abc123&magic_token=...&return_to=%2Foffer%3Fsignrequest_uuid%3D2527b529-552b-4a25-9118-39166122843f",
+  "magic_link": "https://portal.advantismed.com/onboarding?challenge_id=ch_abc123&magic_token=...&return_to=%2Foffer%3Foffer_uuid%3Doff_1234567890abcdef",
   "sent": false
 }
 ```
 
 ### Recommended flow
 
-1. Call `/api/v1/signing/signrequest-created`.
-2. Call `/api/v1/auth/magic-link` with the traveler email and exact offer destination.
-3. Use the returned `magic_link` in your Advantis email or SMS workflow.
+1. Call `/api/v1/signing/signrequest-created` after the SignRequest has been finalized.
+2. Read `offer_uuid` from the response.
+3. Call `/api/v1/auth/magic-link` with the traveler email, that same `offer_uuid`, and `return_to=/offer?offer_uuid=...`.
+4. Use the returned `magic_link` in your Advantis email or SMS workflow.
 
 ### Notes
 

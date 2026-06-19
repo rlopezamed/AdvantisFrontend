@@ -236,7 +236,7 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 }
 
 // ── Main component ──────────────────────────────────────────
-export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+export function HROnboardingStep({ onNext, onBack, reviewMode = false }: { onNext: () => void; onBack: () => void; reviewMode?: boolean }) {
   const [steps, setSteps] = useState<StepDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentSubStep, setCurrentSubStep] = useState(0);
@@ -249,7 +249,9 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
       const data: { steps: StepDef[]; all_completed: boolean } = await res.json();
       setSteps(data.steps);
 
-      if (data.all_completed) {
+      // When the clinician deliberately returns to review HR docs, don't bounce
+      // them straight back to credentialing even if everything is already done.
+      if (data.all_completed && !reviewMode) {
         onNext();
         return;
       }
@@ -268,7 +270,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
     } finally {
       setLoading(false);
     }
-  }, [onNext]);
+  }, [onNext, reviewMode]);
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
@@ -340,13 +342,14 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
   const remainingCount = steps.length - completedCount - skippedCount;
   const allDone = steps.length > 0 && completedCount + skippedCount === steps.length;
 
-  // All steps completed — show completion screen then auto-advance
+  // All steps completed — show completion screen then auto-advance.
+  // Skip auto-advance in review mode so the clinician can revisit steps.
   useEffect(() => {
-    if (allDone) {
+    if (allDone && !reviewMode) {
       const timer = setTimeout(() => onNext(), 2500);
       return () => clearTimeout(timer);
     }
-  }, [allDone, onNext]);
+  }, [allDone, onNext, reviewMode]);
 
   if (loading) {
     return (
@@ -358,7 +361,7 @@ export function HROnboardingStep({ onNext, onBack }: { onNext: () => void; onBac
 
   if (steps.length === 0) return null;
 
-  if (allDone) {
+  if (allDone && !reviewMode) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center">
         <motion.div
