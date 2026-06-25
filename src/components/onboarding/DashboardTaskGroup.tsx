@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Info, AlertCircle, CheckCircle2, Clock, Loader2, UploadCloud, X, FileText, Send, File, Paperclip } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, Clock, Loader2, UploadCloud, X, FileText, Send, File, Paperclip } from 'lucide-react';
 import { TaskGroup, Requirement } from '@/data/mockCredentialingApp';
 import { createPortal } from 'react-dom';
 
@@ -378,12 +378,14 @@ export function DashboardTaskGroup({ group, defaultOpen = true, onRequirementUpd
                             <span className="px-1.5 md:px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[9px] md:text-[10px] font-bold tracking-wider shrink-0">REQ</span>
                           )}
                         </div>
-                        {(req.description || req.rejectionReason) && (
-                          <div className={`mt-1.5 md:mt-2 p-2 md:p-3 rounded-lg md:rounded-xl flex gap-2 md:gap-3 text-xs md:text-sm ${req.status === 'rejected' ? 'bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-300' : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hidden md:flex'}`}>
-                            {req.status === 'rejected' ? <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5" /> : <Info className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5" />}
-                            <p className="line-clamp-2 md:line-clamp-none">{req.status === 'rejected' ? req.rejectionReason : req.description}</p>
-                          </div>
-                        )}
+                        {req.status === 'rejected' && req.rejectionReason ? (
+                          <p className="mt-1 flex items-start gap-1.5 text-xs md:text-sm text-rose-600 dark:text-rose-400">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                            <span className="line-clamp-2">{req.rejectionReason}</span>
+                          </p>
+                        ) : req.description ? (
+                          <p className="mt-0.5 text-xs md:text-sm text-slate-400 dark:text-slate-500 line-clamp-1">{req.description}</p>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3 pl-9 sm:pl-0 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">

@@ -118,10 +118,10 @@ export function CredentialingChat({ specialist }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 h-full lg:sticky lg:top-8">
+    <div className="flex flex-col gap-4 h-full">
 
-      {/* Specialist Card */}
-      <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg md:shadow-2xl">
+      {/* Specialist section (flush — no nested card) */}
+      <div className="shrink-0 pb-4 border-b border-slate-200 dark:border-slate-800">
         <h3 className="text-[10px] md:text-xs font-bold text-slate-500 tracking-widest uppercase mb-3 md:mb-4">Your Credentialing Specialist</h3>
         {specialist ? (
           <>
@@ -157,8 +157,8 @@ export function CredentialingChat({ specialist }: Props) {
         )}
       </div>
 
-      {/* Chat */}
-      <div className="flex flex-col p-4 md:p-6 rounded-2xl md:rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-lg md:shadow-2xl h-[400px] md:h-[450px]">
+      {/* Chat (fills the rest of the pane, flush) */}
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 pb-3 md:pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="relative shrink-0 mt-0.5">

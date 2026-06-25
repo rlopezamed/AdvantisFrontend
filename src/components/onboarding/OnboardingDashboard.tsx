@@ -227,10 +227,8 @@ export function OnboardingDashboard({ onProfileLoaded }: DashboardProps = {}) {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-32 max-w-7xl mx-auto relative">
-        
-        <div className="col-span-1 lg:col-span-2 space-y-4 md:space-y-6 flex flex-col">
-          
+      <div className="max-w-5xl mx-auto space-y-4 md:space-y-6 pb-32 relative">
+
           {/* Progress Strip */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-5 p-4 md:p-6 rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md md:shadow-xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-indigo-500/0 -translate-x-[100%] group-hover:animate-none md:group-hover:animate-[shimmer_2s_infinite]"></div>
@@ -285,43 +283,39 @@ export function OnboardingDashboard({ onProfileLoaded }: DashboardProps = {}) {
               </motion.div>
             ))}
           </div>
-        </div>
-
-        {/* Right Column: Inline Assistant */}
-        <div className="hidden lg:block col-span-1">
-          <CredentialingChat specialist={data.specialist} />
-        </div>
       </div>
 
-      {/* Mobile FAB */}
+      {/* Floating AI assistant button (all sizes) */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsMobileChatOpen(true)}
-        className="lg:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-[0_8px_30px_rgb(79,70,229,0.5)] z-40 border border-indigo-400/50"
+        aria-label="Open onboarding assistant"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-[0_8px_30px_rgb(79,70,229,0.5)] z-40 border border-indigo-400/50"
       >
         <MessageCircle className="w-6 h-6" />
+        <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-indigo-600" />
       </motion.button>
 
-      {/* Mobile Drawer */}
+      {/* Assistant Drawer (all sizes) */}
       <AnimatePresence>
         {isMobileChatOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileChatOpen(false)}
-              className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="lg:hidden fixed top-0 right-0 bottom-0 w-[90vw] max-w-[400px] bg-slate-50 dark:bg-slate-950 shadow-2xl z-50 overflow-y-auto border-l border-slate-200 dark:border-slate-800 flex flex-col"
+              className="fixed top-0 right-0 bottom-0 w-[90vw] max-w-[420px] bg-slate-50 dark:bg-slate-950 shadow-2xl z-50 overflow-y-auto border-l border-slate-200 dark:border-slate-800 flex flex-col"
             >
               <div className="sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-4 md:py-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h2 className="font-bold text-slate-900 dark:text-white text-lg">Support & Chat</h2>
@@ -332,7 +326,7 @@ export function OnboardingDashboard({ onProfileLoaded }: DashboardProps = {}) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-4 md:p-6 flex-1 overflow-y-auto">
+              <div className="p-4 md:p-6 flex-1 min-h-0 flex flex-col">
                 <CredentialingChat specialist={data.specialist} />
               </div>
             </motion.div>

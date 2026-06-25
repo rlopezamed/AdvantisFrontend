@@ -504,7 +504,7 @@ export default function OnboardingPage() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 min-h-screen flex flex-col">
 
         {/* Global Header */}
-        <header className="mb-12 flex flex-col gap-5 rounded-[2rem] border border-white/80 bg-white/78 px-5 py-5 shadow-[0_32px_90px_-60px_rgba(45,98,152,0.55)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+        <header className="mb-4 flex flex-col gap-4 sm:mb-12 sm:gap-5 sm:rounded-[2rem] sm:border sm:border-white/80 sm:bg-white/78 sm:px-5 sm:py-5 sm:shadow-[0_32px_90px_-60px_rgba(45,98,152,0.55)] sm:backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <AdvantisLogo subtitle="Clinician onboarding and credentialing" />
             <div className="hidden h-12 w-px bg-[#d3ebf8] sm:block" />
@@ -516,7 +516,7 @@ export default function OnboardingPage() {
             </div>
           </div>
           {currentStep !== 'auth' && currentStep !== 'welcome' && profile?.name && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="hidden sm:flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-200">{profile.name}</p>
                 <p className="text-xs text-[#4c8fd8] dark:text-[#72c9ef] font-medium tracking-wide">{profile.role} - {profile.facility}</p>
